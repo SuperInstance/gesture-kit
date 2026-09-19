@@ -1,0 +1,23 @@
+{
+  "name": "@superinstance/gesture-kit",
+  "version": "0.1.0",
+  "description": "Read the shape of motion through any abstraction space: arc length, bending (curvature), twist (torsion), and a scale-free gesture distance — plus an embeddable <gesture-hull> widget. Zero dependencies.",
+  "type": "module",
+  "main": "src/gesture.js",
+  "module": "src/gesture.js",
+  "exports": {
+    ".": "./src/gesture.js",
+    "./widget": "./src/widget.js"
+  },
+  "files": ["src", "README.md", "LICENSE"],
+  "scripts": {
+    "test": "node --test"
+  },
+  "keywords": [
+    "gesture", "geometry", "trajectory", "curvature", "torsion", "twist",
+    "differential-geometry", "web-component", "widget", "superinstance", "zero-dependency"
+  ],
+  "repository": { "type": "git", "url": "git+https://github.com/SuperInstance/gesture-kit.git" },
+  "license": "MIT",
+  "sideEffects": ["./src/widget.js"]
+}

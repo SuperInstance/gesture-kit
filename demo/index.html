@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>gesture-kit — the vibrating hull</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin:0; background:#0a0d12; color:#e8eaed; font-family: ui-sans-serif, system-ui, sans-serif; padding: clamp(16px, 4vw, 48px); }
+  h1 { font-size: clamp(20px, 4vw, 30px); margin:0 0 4px; }
+  p.sub { opacity:.6; margin:0 0 24px; max-width: 60ch; }
+  .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:18px; max-width: 980px; }
+  .card { display:flex; flex-direction:column; gap:8px; }
+  .card h2 { font-size:13px; font-weight:600; letter-spacing:.03em; opacity:.8; margin:0; }
+  .card p { font-size:12px; opacity:.55; margin:0; }
+  a { color:#7fb2ff; }
+  code { background:#161b22; padding:1px 5px; border-radius:4px; font-size:.92em; }
+</style>
+</head>
+<body>
+  <h1>gesture-kit</h1>
+  <p class="sub">A gesture is a path through some abstraction space. Its geometry — how far it travels, how hard it turns <em>within</em> a plane (bend), and how much it turns <em>out</em> of that plane (twist) — says what a snapshot can't. Each hull below is coloured by local stress: blue is calm, red is taut. <em>The property is in the twist.</em></p>
+
+  <div class="grid">
+    <div class="card">
+      <h2>a rising line</h2>
+      <gesture-hull id="line"></gesture-hull>
+      <p>Straight travel: arc, no bend, no twist.</p>
+    </div>
+    <div class="card">
+      <h2>an arch (planar)</h2>
+      <gesture-hull id="arch"></gesture-hull>
+      <p>Bends hard, but stays in one plane — twist ≈ 0.</p>
+    </div>
+    <div class="card">
+      <h2>a helix (leaves the plane)</h2>
+      <gesture-hull id="helix"></gesture-hull>
+      <p>Same turning, but each turn opens a new axis — twist &gt; 0.</p>
+    </div>
+    <div class="card">
+      <h2>a lurching walk</h2>
+      <gesture-hull id="lurch"></gesture-hull>
+      <p>Restless: high bend, red segments where it whips around.</p>
+    </div>
+  </div>
+
+  <p class="sub" style="margin-top:28px">Drop it into any page:
+    <br><code>&lt;script type="module" src="../src/widget.js"&gt;&lt;/script&gt;</code>
+    <br><code>&lt;gesture-hull points="[[0,0],[1,2],[2,1]]"&gt;&lt;/gesture-hull&gt;</code>
+  </p>
+
+  <script type="module">
+    import '../src/widget.js';
+    const N = 22;
+    const line = Array.from({length:N}, (_,i)=>[i, i*0.5]);
+    const arch = Array.from({length:N}, (_,i)=>{ const t=i/(N-1)*Math.PI; return [Math.cos(t), Math.sin(t)]; });
+    const helix = Array.from({length:N}, (_,i)=>{ const a=i/(N-1)*Math.PI*2.4; return [Math.cos(a), Math.sin(a), 0.25*a]; });
+    const lurch = Array.from({length:N}, (_,i)=>[i*0.3, (i%2? 1:-1) * (0.6 + 0.4*Math.sin(i))]);
+    document.getElementById('line').points = line;
+    document.getElementById('arch').points = arch;
+    document.getElementById('helix').points = helix;
+    document.getElementById('lurch').points = lurch;
+  </script>
+</body>
+</html>
