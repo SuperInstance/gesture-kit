@@ -1,6 +1,6 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { Gesture, headingAlignment, gestureDistance, readGesture } from '../src/gesture.js';
+import { Gesture, headingAlignment, gestureDistance, readGesture, readTrajectory, normalizeColumns } from '../src/gesture.js';
 
 // Same arc (0..3 rad) regardless of n, so resolution — not path — varies.
 const circle = (n, extra) =>
@@ -93,5 +93,67 @@ describe('readGesture summary', () => {
       assert.ok(Number.isFinite(r[k]), `${k} finite`);
     }
     assert.equal(r.length, 8);
+  });
+});
+
+describe('normalizeColumns', () => {
+  test('maps each column to [0,1]; a constant column → 0', () => {
+    const out = normalizeColumns([[0, 5], [10, 5], [5, 5]]);
+    assert.deepEqual(out, [[0, 0], [1, 0], [0.5, 0]]);
+  });
+  test('ragged rows are padded with 0; input is not mutated', () => {
+    const rows = [[1], [3, 9]];
+    const frozen = JSON.stringify(rows);
+    const out = normalizeColumns(rows);
+    assert.equal(out[0].length, 2);         // padded to widest row
+    assert.equal(JSON.stringify(rows), frozen);
+  });
+  test('empty → empty', () => { assert.deepEqual(normalizeColumns([]), []); });
+});
+
+describe('readTrajectory', () => {
+  test('without normalization equals readGesture on the raw rows', () => {
+    const rows = circle(8, (a) => [0.5 * a]);
+    const a = readTrajectory(rows, { normalize: false });
+    const b = readGesture(rows);
+    assert.ok(Math.abs(a.arcLength - b.arcLength) < 1e-12);
+    assert.ok(Math.abs(a.twistEnergy - b.twistEnergy) < 1e-12);
+    assert.equal(a.normalized, false);
+  });
+
+  test('normalization stops a large-scale axis from drowning a small one', () => {
+    // A zig-zag that lives mostly in a tiny column beside a huge monotone one:
+    // raw, the big column dominates and the zig-zag barely bends; normalized,
+    // the turning in the small column is visible.
+    const rows = Array.from({ length: 10 }, (_, i) => [i * 1000, i % 2 ? 1 : 0]);
+    const raw = readTrajectory(rows, { normalize: false });
+    const norm = readTrajectory(rows); // normalized by default
+    assert.ok(norm.bendingEnergy > raw.bendingEnergy + 1,
+      `norm=${norm.bendingEnergy.toFixed(2)} raw=${raw.bendingEnergy.toFixed(2)}`);
+  });
+
+  test('dims selects columns (e.g. semantic dials, dropping an entropy axis)', () => {
+    // Column 1 is pure noise-magnitude; keep only the meaningful columns 0 and 2.
+    const rows = [[0, 999, 0], [1, -999, 1], [2, 999, 0], [3, -999, 1]];
+    const g = readTrajectory(rows, { dims: [0, 2] });
+    assert.equal(g.points[0].length, 2);
+    assert.deepEqual(g.dims, [0, 2]);
+    assert.ok(Number.isFinite(g.twistEnergy));
+  });
+
+  test('exposes the exact points it measured (so a view draws what was read)', () => {
+    const g = readTrajectory([[0, 5], [10, 5], [5, 5]]);
+    assert.deepEqual(g.points, [[0, 0], [1, 0], [0.5, 0]]);
+    assert.equal(g.length, 3);
+  });
+
+  test('degenerate input is graceful and pure', () => {
+    const rows = [[0, 0], 'junk', null, [1, 1]];
+    const frozen = JSON.stringify(rows);
+    const g = readTrajectory(rows);
+    assert.equal(g.length, 2);              // junk filtered
+    assert.equal(JSON.stringify(rows), frozen); // not mutated
+    assert.equal(readTrajectory([]).length, 0);
+    assert.equal(readTrajectory(null).length, 0);
   });
 });

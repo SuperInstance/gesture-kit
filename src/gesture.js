@@ -44,6 +44,30 @@ function cosine(a, b) {
   return na < 1e-12 || nb < 1e-12 ? 0 : dot(a, b) / (na * nb);
 }
 
+/** Per-column min–max normalize a set of vectors to [0,1] so no single axis
+ *  dominates the geometry when dimensions live on wildly different scales (a
+ *  score in the tens beside a ratio in [0,1], or metres beside radians). A
+ *  constant column maps to 0. Returns a new array; never mutates the input. */
+export function normalizeColumns(rows) {
+  if (!Array.isArray(rows) || rows.length === 0) return [];
+  const d = rows.reduce((m, r) => Math.max(m, r.length), 0);
+  const min = new Array(d).fill(Infinity);
+  const max = new Array(d).fill(-Infinity);
+  for (const r of rows) {
+    for (let k = 0; k < d; k++) {
+      const v = r[k] ?? 0;
+      if (v < min[k]) min[k] = v;
+      if (v > max[k]) max[k] = v;
+    }
+  }
+  return rows.map((r) =>
+    Array.from({ length: d }, (_, k) => {
+      const span = max[k] - min[k];
+      return span > 1e-12 ? ((r[k] ?? 0) - min[k]) / span : 0;
+    })
+  );
+}
+
 /** The path a value (or vector of values) traces through state space over time. */
 export class Gesture {
   /** @param {Point[]} points ordered readings, oldest first (defensively copied). */
@@ -207,6 +231,41 @@ export function readGesture(points) {
     bendingEnergy: g.bendingEnergy(),
     twistEnergy: g.twistEnergy(),
     planarity: g.planarity(),
+  };
+}
+
+/**
+ * Read the shape of a TRAJECTORY — an ordered set of numeric rows moving through
+ * an abstraction space whose dimensions may live on different scales. This is
+ * the reading that quilt-gan (ℚ¹⁶ breed dials) and Scrapcraft (a robot's
+ * (x,z,heading) drive) each re-derived: select the dimensions that matter,
+ * per-column normalize so no axis dominates, then read the geometry order by
+ * order. Made canonical here so the whole fleet reads a path the same way.
+ *
+ * @param {Point[]} rows         ordered vectors, oldest first.
+ * @param {object}  [opts]
+ * @param {number[]}[opts.dims]  column indices to keep (default: all columns).
+ * @param {boolean} [opts.normalize] per-column min–max normalize (default true).
+ * @returns {{length,arcLength,speed,heading,bendingEnergy,twistEnergy,planarity,
+ *            points:Point[],dims:number[],normalized:boolean}}
+ *          The geometry summary PLUS the exact points it was measured on (so a
+ *          view draws what was read) and the provenance of the reading.
+ *          Never mutates `rows`; never throws on empty/degenerate input.
+ */
+export function readTrajectory(rows, opts = {}) {
+  const doNorm = opts.normalize !== false;
+  const clean = Array.isArray(rows)
+    ? rows.filter((r) => Array.isArray(r) && r.length && r.every((x) => Number.isFinite(x)))
+    : [];
+  const selected = Array.isArray(opts.dims)
+    ? clean.map((r) => opts.dims.map((i) => r[i] ?? 0))
+    : clean;
+  const points = doNorm ? normalizeColumns(selected) : selected.map((r) => [...r]);
+  return {
+    ...readGesture(points),
+    points,
+    dims: Array.isArray(opts.dims) ? [...opts.dims] : null,
+    normalized: doNorm,
   };
 }
 

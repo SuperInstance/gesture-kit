@@ -61,8 +61,25 @@ document.querySelector('gesture-hull').points = myTrajectory; // array of number
 - `.stressProfile()` — per-vertex local turning (the stress line the widget draws).
 - `.resample(n)` — resample to `n` points spaced evenly by arc length.
 - `gestureDistance(a, b, samples=32)` · `headingAlignment(a, b)` · `readGesture(points)`
+- `readTrajectory(rows, { dims, normalize })` — read a path whose dimensions live on different scales. Selects `dims` (default all), **per-column min–max normalizes** so no axis dominates (default on), then reads the geometry. Returns the `readGesture` summary **plus** `points` (the exact cloud it measured, so a view draws what was read) and `{ dims, normalized }`.
+- `normalizeColumns(rows)` — the per-column [0,1] rescale on its own (a constant column → 0).
 
 All methods are total: empty and single-point gestures return sensible zeros, never throw.
+
+### Reading a trajectory whose axes have different scales
+
+```js
+import { readTrajectory } from '@superinstance/gesture-kit';
+
+// A breed run's ℚ¹⁶ dials, or a robot's (x, z, heading): mixed units, so a raw
+// reading would let the biggest-magnitude axis drown the rest. Normalize first.
+const g = readTrajectory(rows, { dims: [0, 1, 3, 4] }); // keep the meaningful axes
+g.bendingEnergy;   // 2nd order — turning within a plane
+g.twistEnergy;     // 3rd order — turning out of it
+g.points;          // the normalized cloud, ready to hand a <gesture-hull>
+```
+
+This is the reading `quilt-gan` (ℚ¹⁶ breed dials) and `Scrapcraft` (a robot's `(x,z,heading)` drive) each re-derived — now canonical here, so the whole fleet reads a path the same way.
 
 ## Why it exists
 
